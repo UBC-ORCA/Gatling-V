@@ -115,11 +115,11 @@ module vCfg
         end 
         else if (r_req_pulse) begin
             vtype <= r_nvtype;
-            vl <= 64;//r_avl[VL_BITS-1:0];//r_nvtype.vill == 1'b1 ? 'b0 : ((r_avl > VLMAX & (~r_is_vsetivli)) ? VLMAX[VL_BITS-1:0] : r_avl[VL_BITS-1:0]);
+            vl <= r_avl[VL_BITS-1:0];//r_nvtype.vill == 1'b1 ? 'b0 : ((r_avl > VLMAX & (~r_is_vsetivli)) ? VLMAX[VL_BITS-1:0] : r_avl[VL_BITS-1:0]);
         end
         else begin
             vtype <= vtype;
-            vl <= 64;//vl;
+            vl <= vl;
         end 
     end
 
