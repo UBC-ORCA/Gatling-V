@@ -1,0 +1,227 @@
+`define MIN(a,b) {(a < b) ? a : b}
+
+module operand_select #(
+	parameter INPUT_WIDTH  	= 64,
+	parameter OUTPUT_WIDTH 	= 18,
+	parameter OPSEL_WIDTH  	= 2,
+	parameter SEW_WIDTH    	= 2,
+	parameter ENABLE_64_BIT = 1,
+	parameter EN_128_MUL 	= 0
+) (
+	input                            		clk,
+	input                            		rst,
+	input  		signed	[ INPUT_WIDTH-1:0] 	vec0,
+	input  		signed	[ INPUT_WIDTH-1:0] 	vec1,
+	input         		[ OPSEL_WIDTH-1:0] 	opSel,
+	input         		[   SEW_WIDTH-1:0] 	sew,
+	input                            		valid,
+	/*
+	output 	reg signed 	[OUTPUT_WIDTH-1:0] 	m0_a0,
+	output 	reg signed 	[OUTPUT_WIDTH-1:0] 	m0_b0,
+	output 	reg signed 	[OUTPUT_WIDTH-1:0] 	m0_a1,
+	output 	reg signed 	[OUTPUT_WIDTH-1:0] 	m0_b1,
+	output 	reg signed 	[OUTPUT_WIDTH-1:0] 	m1_a0,
+	output 	reg signed 	[OUTPUT_WIDTH-1:0] 	m1_b0,
+	output 	reg signed 	[OUTPUT_WIDTH-1:0] 	m1_a1,
+	output 	reg signed 	[OUTPUT_WIDTH-1:0] 	m1_b1,
+	output 	reg signed 	[OUTPUT_WIDTH-1:0] 	m2_a0,
+	output 	reg signed 	[OUTPUT_WIDTH-1:0] 	m2_b0,
+	output 	reg signed 	[OUTPUT_WIDTH-1:0] 	m2_a1,
+	output 	reg signed 	[OUTPUT_WIDTH-1:0] 	m2_b1,
+	output 	reg signed 	[OUTPUT_WIDTH-1:0] 	m3_a0,
+	output 	reg signed 	[OUTPUT_WIDTH-1:0] 	m3_b0,
+	output 	reg signed 	[OUTPUT_WIDTH-1:0] 	m3_a1,
+	output 	reg signed 	[OUTPUT_WIDTH-1:0] 	m3_b1
+	*/
+	output  signed  [OUTPUT_WIDTH-1:0]  m0_a0,
+    output  signed  [OUTPUT_WIDTH-1:0]  m0_b0,
+    output  signed  [OUTPUT_WIDTH-1:0]  m0_a1,
+    output  signed  [OUTPUT_WIDTH-1:0]  m0_b1,
+    output  signed  [OUTPUT_WIDTH-1:0]  m1_a0,
+    output  signed  [OUTPUT_WIDTH-1:0]  m1_b0,
+    output  signed  [OUTPUT_WIDTH-1:0]  m1_a1,
+    output  signed  [OUTPUT_WIDTH-1:0]  m1_b1,
+    output  signed  [OUTPUT_WIDTH-1:0]  m2_a0,
+    output  signed  [OUTPUT_WIDTH-1:0]  m2_b0,
+    output  signed  [OUTPUT_WIDTH-1:0]  m2_a1,
+    output  signed  [OUTPUT_WIDTH-1:0]  m2_b1,
+    output  signed  [OUTPUT_WIDTH-1:0]  m3_a0,
+    output  signed  [OUTPUT_WIDTH-1:0]  m3_b0,
+    output  signed  [OUTPUT_WIDTH-1:0]  m3_a1,
+    output  signed  [OUTPUT_WIDTH-1:0]  m3_b1
+);
+
+	wire		[OUTPUT_WIDTH-1:0] 	a0, a1, a2, a3, b0, b1, b2, b3;
+	wire		[OUTPUT_WIDTH/2-1:0] 	b_a0, b_a1, b_a2, b_a3, b_a4, b_a5, b_a6, b_a7;
+	wire		[OUTPUT_WIDTH/2-1:0] 	b_b0, b_b1, b_b2, b_b3, b_b4, b_b5, b_b6, b_b7;
+	
+	wire 							a_signed, b_signed;
+	wire 							a0_ext, a1_ext, a2_ext, a3_ext;  
+	wire 							b0_ext, b1_ext, b2_ext, b3_ext;
+	wire 							b_a0_ext, b_a1_ext, b_a2_ext, b_a3_ext, b_a4_ext, b_a5_ext, b_a6_ext, b_a7_ext;
+	wire 							b_b0_ext, b_b1_ext, b_b2_ext, b_b3_ext, b_b4_ext, b_b5_ext, b_b6_ext, b_b7_ext;
+	wire 							b_op, h_op, w_op, l_op;    
+
+    assign a_signed = ~(opSel == 'b00);
+    assign b_signed = opSel[0];
+
+	assign b_op 	= (sew == 'b00);
+	assign h_op 	= (sew == 'b01);
+	assign w_op 	= (sew == 'b10);
+	assign l_op 	= (sew == 'b11);
+
+	assign a0 		= b_op ? 'b0 : {{2{a0_ext}}, vec0[15:0]};
+	assign a1 		= b_op ? 'b0 : {{2{a1_ext}}, vec0[31:16]};
+	if (INPUT_WIDTH >= 64) begin
+		assign a2 		= b_op ? 'b0 : {{2{a2_ext}}, vec0[47:32]};
+		assign a3 		= b_op ? 'b0 : {{2{a3_ext}}, vec0[63:48]};
+	end
+	assign b0 		= b_op ? 'b0 : {{2{b0_ext}}, vec1[15:0]};
+	assign b1 		= b_op ? 'b0 : {{2{b1_ext}}, vec1[31:16]};
+	if (INPUT_WIDTH >= 64) begin
+		assign b2 		= b_op ? 'b0 : {{2{b2_ext}}, vec1[47:32]};
+		assign b3 		= b_op ? 'b0 : {{2{b3_ext}}, vec1[63:48]};
+	end
+
+	assign b_a0 	= b_op ? {{1{b_a0_ext}}, vec0[7:0]}   : 'b0;
+	assign b_a1 	= b_op ? {{1{b_a1_ext}}, vec0[15:8]}  : 'b0;
+	assign b_a2 	= b_op ? {{1{b_a2_ext}}, vec0[23:16]} : 'b0;
+	assign b_a3 	= b_op ? {{1{b_a3_ext}}, vec0[31:24]} : 'b0;
+	if (INPUT_WIDTH >= 64) begin
+		assign b_a4 	= b_op ? {{1{b_a4_ext}}, vec0[39:32]} : 'b0;
+		assign b_a5 	= b_op ? {{1{b_a5_ext}}, vec0[47:40]} : 'b0;
+		assign b_a6 	= b_op ? {{1{b_a6_ext}}, vec0[55:48]} : 'b0;
+		assign b_a7 	= b_op ? {{1{b_a7_ext}}, vec0[63:56]} : 'b0;
+	end
+
+	assign b_b0 	= b_op ? {{1{b_b0_ext}}, vec1[7:0]}   : 'b0;
+	assign b_b1 	= b_op ? {{1{b_b1_ext}}, vec1[15:8]}  : 'b0;
+	assign b_b2 	= b_op ? {{1{b_b2_ext}}, vec1[23:16]} : 'b0;
+	assign b_b3 	= b_op ? {{1{b_b3_ext}}, vec1[31:24]} : 'b0;
+	if (INPUT_WIDTH >= 64) begin
+		assign b_b4 	= b_op ? {{1{b_b4_ext}}, vec1[39:32]} : 'b0;
+		assign b_b5 	= b_op ? {{1{b_b5_ext}}, vec1[47:40]} : 'b0;
+		assign b_b6 	= b_op ? {{1{b_b6_ext}}, vec1[55:48]} : 'b0;
+		assign b_b7 	= b_op ? {{1{b_b7_ext}}, vec1[63:56]} : 'b0;
+	end
+
+	assign a0_ext 	= a_signed & vec0[15] & h_op;
+	assign a1_ext 	= a_signed & vec0[31] & (h_op | w_op);
+	if (INPUT_WIDTH >= 64) begin
+		assign a2_ext 	= a_signed & vec0[47] & h_op;
+		assign a3_ext 	= a_signed & vec0[63];
+	end
+
+	assign b0_ext 	= b_signed & vec1[15] & h_op;
+	assign b1_ext 	= b_signed & vec1[31] & (h_op | w_op);
+	if (INPUT_WIDTH >= 64) begin
+		assign b2_ext 	= b_signed & vec1[47] & h_op;
+		assign b3_ext 	= b_signed & vec1[63];
+	end
+
+	assign b_a0_ext = a_signed & vec0[7]  & b_op;
+	assign b_a1_ext = a_signed & vec0[15] & b_op;
+	assign b_a2_ext = a_signed & vec0[23] & b_op;
+	assign b_a3_ext = a_signed & vec0[31] & b_op;
+	if (INPUT_WIDTH >= 64) begin
+		assign b_a4_ext = a_signed & vec0[39] & b_op;
+		assign b_a5_ext = a_signed & vec0[47] & b_op;
+		assign b_a6_ext = a_signed & vec0[55] & b_op;
+		assign b_a7_ext = a_signed & vec0[63] & b_op;
+	end
+
+	assign b_b0_ext = b_signed & vec1[7]  & b_op;
+	assign b_b1_ext = b_signed & vec1[15] & b_op;
+	assign b_b2_ext = b_signed & vec1[23] & b_op;
+	assign b_b3_ext = b_signed & vec1[31] & b_op;
+	if (INPUT_WIDTH >= 64) begin
+		assign b_b4_ext = b_signed & vec1[39] & b_op;
+		assign b_b5_ext = b_signed & vec1[47] & b_op;
+		assign b_b6_ext = b_signed & vec1[55] & b_op;
+		assign b_b7_ext = b_signed & vec1[63] & b_op;
+	end
+
+/*
+	always @(posedge clk) begin
+		if(rst) begin
+			m0_a0 	<= 'b0;
+			m0_b0 	<= 'b0;
+			m0_a1 	<= 'b0;
+			m0_b1 	<= 'b0;
+			m1_a0 	<= 'b0;
+			m1_b0 	<= 'b0;
+			m1_a1 	<= 'b0;
+			m1_b1 	<= 'b0;
+			m2_a0 	<= 'b0;
+			m2_b0 	<= 'b0;
+			m2_a1 	<= 'b0;
+			m2_b1 	<= 'b0;
+			m3_a0 	<= 'b0;
+			m3_b0 	<= 'b0;
+			m3_a1 	<= 'b0;
+			m3_b1 	<= 'b0;
+		end 
+		else begin
+			m0_a0 	<= b_op ? {b_a7, b_a6} : a3;
+			m0_a1 	<= b_op ? {b_a5, b_a4} : a2;
+			if (EN_128_MUL) begin
+				m0_b0 	<= b_op ? {b_b7, b_b6} : b3;
+				m0_b1 	<= b_op ? {b_b5, b_b4} : b2;
+			end else begin
+				m0_b0 	<= b_op ? {b_b7, b_b6} : (l_op ? b1 : b3);
+				m0_b1 	<= b_op ? {b_b5, b_b4} : (l_op ? b0 : b2);
+			end
+			// m0_a1 	<= b_op ? b_a6 : a2;
+			// m0_b1 	<= b_op ? b_b6 : b2;
+			
+			if (EN_128_MUL) begin
+				// m1_a0 	<= b_op ? b_a5 : a3;
+				// m1_b0 	<= b_op ? b_b5 : b1;
+				m1_a0 	<= a3;
+				m1_b0 	<= b1;
+				// m1_a1 	<= b_op ? b_a4 : a2;
+				// m1_b1 	<= b_op ? b_b4 : b0;
+				m1_a1 	<= a2;
+				m1_b1 	<= b0;
+			end
+			// m2_a0 	<= b_op ? b_a3 : a1;
+			// m2_b0 	<= b_op ? b_b3 : b3;
+			m2_a0 	<= a1;
+			m2_b0 	<= b3;
+			// m2_a1 	<= b_op ? b_a2 : a0;
+			// m2_b1 	<= b_op ? b_b2 : b2;
+			m2_a1 	<= a0;
+			m2_b1 	<= b2;
+			m3_a0 	<= b_op ? {b_a3, b_a2} : a1;
+			m3_b0 	<= b_op ? {b_b3, b_b2} : b1;
+			m3_a1 	<= b_op ? {b_a1, b_a0} : a0;
+			m3_b1 	<= b_op ? {b_b1, b_b0} : b0;
+		end
+	end
+*/
+assign    m0_a0   = b_op ? {b_a7, b_a6} : a3;
+assign    m0_a1   = b_op ? {b_a5, b_a4} : a2;
+if (EN_128_MUL) begin
+    assign    m0_b0   = b_op ? {b_b7, b_b6} : b3;
+    assign    m0_b1   = b_op ? {b_b5, b_b4} : b2;
+end else begin
+    assign    m0_b0   = b_op ? {b_b7, b_b6} : (l_op ? b1 : b3);
+    assign    m0_b1   = b_op ? {b_b5, b_b4} : (l_op ? b0 : b2);
+end
+
+if (EN_128_MUL) begin
+    assign m1_a0   = a3;
+    assign m1_b0   = b1;
+    assign m1_a1   = a2;
+    assign m1_b1   = b0;
+end
+assign m2_a0   = a1;
+assign m2_b0   = b3;
+assign m2_a1   = a0;
+assign m2_b1   = b2;
+assign m3_a0   = b_op ? {b_a3, b_a2} : a1;
+assign m3_b0   = b_op ? {b_b3, b_b2} : b1;
+assign m3_a1   = b_op ? {b_a1, b_a0} : a0;
+assign m3_b1   = b_op ? {b_b1, b_b0} : b0;
+
+endmodule
